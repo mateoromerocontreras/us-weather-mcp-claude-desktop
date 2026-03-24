@@ -1,0 +1,55 @@
+package com.weather.weatherDemo;
+
+import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.transport.ServerParameters;
+import io.modelcontextprotocol.client.transport.stdio.StdioClientTransport;
+import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
+import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import io.modelcontextprotocol.spec.McpSchema.ListToolsResult;
+
+import java.util.Map;
+
+public class McpTestClient {
+
+    public static void main(String[] args) {
+        // Configuramos los parametros del servidor (ruta absoluta a tu jar)
+        var stdioParams = ServerParameters.builder("java")
+                .args("-jar", "c:\\Backend\\weatherDemo\\target\\weatherDemo-0.0.1-SNAPSHOT.jar")
+                .build();
+
+        // Creamos el transporte que se comunicará por entrada/salida estándar (STDIO)
+        var stdioTransport = new StdioClientTransport(stdioParams);
+
+        // Creamos y configuramos el cliente de forma sincrónica
+        var mcpClient = McpClient.sync(stdioTransport).build();
+
+        try {
+            System.out.println("Inicializando el cliente MCP...");
+            mcpClient.initialize();
+            System.out.println("✅ Cliente inicializado correctamente.");
+
+            // 1. Listar herramientas disponibles en tu servidor
+            System.out.println("\nConsultando las herramientas disponibles...");
+            ListToolsResult toolsList = mcpClient.listTools();
+            toolsList.tools().forEach(tool -> 
+                System.out.println("Herramienta encontrada: " + tool.name())
+            );
+
+            // 2. Probar la herramienta getWeather
+            System.out.println("\nEjecutando herramienta 'getWeather' (o el nombre que le hayas dado)...");
+            // Nota: Aquí debes usar el nombre EXACTO de la herramienta que expone tu servidor.
+            CallToolResult weather = mcpClient.callTool(
+                    new CallToolRequest("getWeather",
+                            Map.of("latitude", "47.6062", "longitude", "-122.3321")));
+            
+            System.out.println("Respuesta del clima: " + weather.content());
+
+        } catch (Exception e) {
+            System.err.println("Ocurrió un error al comunicarse con el servidor MCP:");
+            e.printStackTrace();
+        } finally {
+            System.out.println("\nCerrando el cliente...");
+            mcpClient.closeGracefully();
+        }
+    }
+}
